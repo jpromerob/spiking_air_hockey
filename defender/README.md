@@ -1,0 +1,5 @@
+# Defender
+
+In this work, the automated player follows specific directions: 1. The robot-paddle remains close to its own goal while the puck is on the human player’s side. 2. When the puck is situated between the middle line and the defense line, the paddle’s trajectory mirrors the puck’s trajectory. 3. Upon the puck crossing the defense line, the paddle retracts to its goal to prevent the human-player from scoring. This reactive behavior was achieved through a direct ad-hoc mapping from the puck layer to the paddle layer. The figure below exemplifies this behavior by showing a hypothetical puck trajectory, in red, and the corresponding paddle trajectory, in orange; with intensity signaling the progress of time.
+
+![](https://github.com/jpromerob/spiking_air_hockey/blob/main/description/Defense.png)

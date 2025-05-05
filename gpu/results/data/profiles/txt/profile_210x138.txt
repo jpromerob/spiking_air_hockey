@@ -1,0 +1,117 @@
+Profiling Enabled ...
+Creating Model for 210x138 input
+Connectivity from Consolidator to Mapper
+We have 28980 non-zero connections
+Done with weights
+Model size: 3.17 GB
+Wrote profile results to lif_snn_full.py.lprof
+Timer unit: 1e-06 s
+
+Total time: 16.9213 s
+File: lif_snn_full.py
+Function: main at line 299
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+   299                                           @profile
+   300                                           def main():
+   301                                           
+   302         1       1034.6   1034.6      0.0      args = parse_args()
+   303                                           
+   304         1          0.2      0.2      0.0      if args.profiler:
+   305         1          2.2      2.2      0.0          print('Profiling Enabled ...')
+   306                                           
+   307         1          0.1      0.1      0.0      gpu_index = 1
+   308         1     186816.5 186816.5      1.1      torch.cuda.set_device(gpu_index)
+   309         1         27.3     27.3      0.0      device = torch.device("cuda")
+   310                                           
+   311         1         19.7     19.7      0.0      torch.set_float32_matmul_precision('high')
+   312                                           
+   313         1         16.7     16.7      0.0      print(f'Creating Model for {args.length}x{args.width} input')
+   314                                           
+   315                                               # Move model to GPU
+   316         1    5716594.2    6e+06     33.8      model = ControlNet(args.width, args.length, args.mode).to(device)
+   317                                           
+   318         1        139.0    139.0      0.0      size_gb = get_model_size(model)
+   319         1         15.4     15.4      0.0      print(f"Model size: {size_gb:.2f} GB")
+   320                                           
+   321                                           
+   322         1          0.8      0.8      0.0      res_y = args.length
+   323         1          0.2      0.2      0.0      res_x = args.width
+   324                                           
+   325                                           
+   326                                               # Stream events from UDP port 3333 (default)
+   327         1         36.3     36.3      0.0      frame = np.zeros((res_y+1,res_x+1,3))
+   328         1         56.2     56.2      0.0      black = np.zeros((res_y+1,res_x+1,3))
+   329         1          9.6      9.6      0.0      new_l = math.ceil((res_y+1)*args.scale)
+   330         1          0.4      0.4      0.0      new_w = math.ceil((res_x+1)*args.scale)
+   331                                           
+   332                                           
+   333         1          1.1      1.1      0.0      x_coord = int(res_x/2)
+   334         1          0.2      0.2      0.0      y_coord = int(res_y)
+   335                                           
+   336         1         42.6     42.6      0.0      sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+   337                                           
+   338         1          0.1      0.1      0.0      pass_counter = 0
+   339         2         34.0     17.0      0.0      with torch.inference_mode():
+   340                                                    
+   341         2        136.2     68.1      0.0          with aestream.UDPInput((res_y, res_x), device = 'cpu', port=args.port) as stream1:
+   342                                                               
+   343      2000        508.2      0.3      0.0              while True:
+   344                                           
+   345      2000      22769.2     11.4      0.1                  reading = stream1.read()
+   346                                           
+   347      2000      42514.8     21.3      0.3                  reshaped_data = torch.tensor(np.transpose(reading), dtype=torch.float32).unsqueeze(0)
+   348      2000      63924.6     32.0      0.4                  device_input_data = reshaped_data.to(device)
+   349                                           
+   350      2000    3413918.1   1707.0     20.2                  out_t_dev, out_x_dev, out_y_dev = model(device_input_data)
+   351      2000    6431597.2   3215.8     38.0                  torch.cuda.synchronize() 
+   352                                           
+   353      2000      78987.2     39.5      0.5                  out_t = out_t_dev.cpu().squeeze().numpy()
+   354      2000      29826.9     14.9      0.2                  out_x = out_x_dev.cpu().squeeze().numpy()
+   355      2000      27109.0     13.6      0.2                  out_y = out_y_dev.cpu().squeeze().numpy()
+   356                                           
+   357                                           
+   358      2000       7946.3      4.0      0.0                  out_t_frame = np.transpose(out_t, (1, 0))
+   359                                                           
+   360      2000      38039.3     19.0      0.2                  frame = black.copy()
+   361      2000     127232.6     63.6      0.8                  frame[0:out_t_frame.shape[0],0:out_t_frame.shape[1],1] = out_t_frame
+   362                                           
+   363                                           
+   364      2000     678268.2    339.1      4.0                  nonzero_indices = np.nonzero(frame)
+   365      2000       1348.9      0.7      0.0                  if len(nonzero_indices[0]) > 0:
+   366                                                               avg_x = int(np.mean(nonzero_indices[0]))
+   367                                                               avg_y = int(np.mean(nonzero_indices[1]))
+   368                                                               send_tracking_data(sock, avg_x, avg_y)
+   369                                           
+   370                                           
+   371      2000       3052.2      1.5      0.0                  frame[0:res_y,res_x,0] = out_y
+   372      2000       1985.2      1.0      0.0                  frame[res_y,0:res_x,0] = out_x
+   373                                           
+   374      2000      12611.7      6.3      0.1                  idx_x = np.where(out_x>0.5)
+   375      2000       4926.3      2.5      0.0                  idx_y = np.where(out_y>0.5)
+   376                                           
+   377                                           
+   378      2000        285.4      0.1      0.0                  try:
+   379      2000        836.8      0.4      0.0                      if len(idx_x[0])>0 and len(idx_y[0]) > 0:
+   380                                                                   x_coord = int(np.mean(idx_x))
+   381                                                                   y_coord = int(np.mean(idx_y))
+   382                                                           except:
+   383                                                               pass
+   384                                                           
+   385                                           
+   386      2000       1032.7      0.5      0.0                  y_norm = x_coord/res_x*100
+   387      2000        394.2      0.2      0.0                  x_norm = y_coord/res_y*100
+   388                                           
+   389                                           
+   390      2000       4055.2      2.0      0.0                  data = "{},{}".format(x_norm, y_norm).encode()
+   391      2000      21433.1     10.7      0.1                  sock.sendto(data, (UDP_IP, DEFAULT_CTRL_PADDLE_DESIRED_PORT))
+   392                                           
+   393      2000        631.8      0.3      0.0                  if args.profiler:
+   394      2000        554.9      0.3      0.0                      pass_counter += 1
+   395      2000        474.7      0.2      0.0                      if pass_counter == 2000:
+   396         1          0.2      0.2      0.0                          break
+   397                                           
+   398                                                           
+   399         1         36.0     36.0      0.0      sock.close()
+

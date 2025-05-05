@@ -1,0 +1,47 @@
+CPU:
+  IP: "172.16.222.30"
+
+SNN_Accelerator:
+  GPU:
+    IP: "172.16.222.28" # 'Gateway' 
+  SpiNNaker: 
+    IP: "172.16.223.5" # 'Gateway'
+    Convolutioner: # Rack X.X.X.1|121|129
+      IP: "172.16.223.129" # board 
+    Mapper: # SpiNN-5 X.X.X.37|43|13
+      IP: "172.16.223.37" # board
+    Projector: # SpiNN-5 X.X.X.37|43|13
+      IP: "172.16.223.13" # board
+
+Visualizers:
+  Raw_data:
+    Port: 3330
+  Fast_SCNN:
+    Port: 3331
+  Medium_SCNN:
+    Port: 3334
+  Slow_SCNN:
+    Port: 3337
+  Post_Convolutioner:
+    Port: 3339
+  Post_Mapper:
+    Port: 3349
+  Post_Projector:
+    Port: 3359
+
+
+Controller:
+  Puck_current:
+    Port: 6161
+  Paddle_current:
+    Port: 6363
+  Paddle_desired:
+    Port: 6262
+  Paddle_consolidated:
+    Port: 6464
+
+Analyzer:
+  In_Time_Data:
+    Port: 2626
+  Delayed_Data:
+    Port: 6262

@@ -1,0 +1,52 @@
+Line #,Hits,Time (µs),Per Hit Time (µs),% Time,Code
+302,1,1024.0,1024.0,0.0,args = parse_args()
+304,1,0.3,0.3,0.0,if args.profiler:
+305,1,1.9,1.9,0.0,print('Profiling Enabled ...')
+307,1,0.1,0.1,0.0,gpu_index = 1
+308,1,194117.4,194117.4,3.2,torch.cuda.set_device(gpu_index)
+309,1,28.4,28.4,0.0,"device = torch.device(""cuda"")"
+311,1,16.2,16.2,0.0,torch.set_float32_matmul_precision('high')
+313,1,17.9,17.9,0.0,print(f'Creating Model for {args.length}x{args.width} input')
+318,1,112.2,112.2,0.0,size_gb = get_model_size(model)
+319,1,14.3,14.3,0.0,"print(f""Model size: {size_gb:.2f} GB"")"
+322,1,0.7,0.7,0.0,res_y = args.length
+323,1,2.2,2.2,0.0,res_x = args.width
+327,1,42.2,42.2,0.0,"frame = np.zeros((res_y+1,res_x+1,3))"
+328,1,62.2,62.2,0.0,"black = np.zeros((res_y+1,res_x+1,3))"
+329,1,9.0,9.0,0.0,new_l = math.ceil((res_y+1)*args.scale)
+330,1,0.4,0.4,0.0,new_w = math.ceil((res_x+1)*args.scale)
+333,1,1.2,1.2,0.0,x_coord = int(res_x/2)
+334,1,0.2,0.2,0.0,y_coord = int(res_y)
+336,1,45.9,45.9,0.0,"sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)"
+338,1,0.1,0.1,0.0,pass_counter = 0
+339,2,38.5,19.3,0.0,with torch.inference_mode():
+341,2,118.6,59.3,0.0,"with aestream.UDPInput((res_y, res_x), device = 'cpu', port=args.port) as stream1:"
+343,2000,547.7,0.3,0.0,while True:
+345,2000,19553.0,9.8,0.3,reading = stream1.read()
+347,2000,36547.4,18.3,0.6,"reshaped_data = torch.tensor(np.transpose(reading), dtype=torch.float32).unsqueeze(0)"
+348,2000,47241.7,23.6,0.8,device_input_data = reshaped_data.to(device)
+350,2000,3361986.5,1681.0,55.2,"out_t_dev, out_x_dev, out_y_dev = model(device_input_data)"
+351,2000,411165.5,205.6,6.8,torch.cuda.synchronize()
+353,2000,62302.5,31.2,1.0,out_t = out_t_dev.cpu().squeeze().numpy()
+354,2000,28726.0,14.4,0.5,out_x = out_x_dev.cpu().squeeze().numpy()
+355,2000,26792.8,13.4,0.4,out_y = out_y_dev.cpu().squeeze().numpy()
+358,2000,7667.7,3.8,0.1,"out_t_frame = np.transpose(out_t, (1, 0))"
+360,2000,19560.2,9.8,0.3,frame = black.copy()
+361,2000,80651.5,40.3,1.3,"frame[0:out_t_frame.shape[0],0:out_t_frame.shape[1],1] = out_t_frame"
+364,2000,325352.4,162.7,5.3,nonzero_indices = np.nonzero(frame)
+365,2000,1216.8,0.6,0.0,if len(nonzero_indices[0]) > 0:
+371,2000,2599.8,1.3,0.0,"frame[0:res_y,res_x,0] = out_y"
+372,2000,1798.8,0.9,0.0,"frame[res_y,0:res_x,0] = out_x"
+374,2000,11933.0,6.0,0.2,idx_x = np.where(out_x>0.5)
+375,2000,4758.5,2.4,0.1,idx_y = np.where(out_y>0.5)
+378,2000,264.4,0.1,0.0,try:
+379,2000,814.2,0.4,0.0,if len(idx_x[0])>0 and len(idx_y[0]) > 0:
+386,2000,1045.6,0.5,0.0,y_norm = x_coord/res_x*100
+387,2000,374.8,0.2,0.0,x_norm = y_coord/res_y*100
+390,2000,4001.5,2.0,0.1,"data = ""{},{}"".format(x_norm, y_norm).encode()"
+391,2000,20801.7,10.4,0.3,"sock.sendto(data, (UDP_IP, DEFAULT_CTRL_PADDLE_DESIRED_PORT))"
+393,2000,602.4,0.3,0.0,if args.profiler:
+394,2000,497.6,0.2,0.0,pass_counter += 1
+395,2000,457.5,0.2,0.0,if pass_counter == 2000:
+396,1,0.2,0.2,0.0,break
+399,1,31.5,31.5,0.0,sock.close()

@@ -1,0 +1,9 @@
+reports/
+__pycache__/
+*.avi
+videos
+*.aedat4
+*.dat
+*.npz
+runs/
+common/*kernel.npy
